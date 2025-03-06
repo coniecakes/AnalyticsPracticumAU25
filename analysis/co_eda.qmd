@@ -1,0 +1,78 @@
+---
+title: "AU Analytics Practicum"
+subtitle: "Autofill Tool"
+author: 
+  - name: "Conie O'Malley"
+    affiliation: "American University"
+    email: "co1984a@american.edu"
+date: "`r Sys.Date()`"
+format: 
+  html:
+    theme: cosmo 
+    highlight-style: github 
+    toc: true
+    toc-depth: 4
+    number-sections: true 
+    embed-resources: true
+    fig-width: 6 
+    fig-height: 4
+    df-print: paged
+    code-fold: true
+    #css: styles.css # Custom styling
+    #include-after-body: footer.html # Custom footer
+# bibliography: references.bib 
+# link-citations: true
+# version: "1.0"
+---
+
+
+```{r libraries}
+
+# libraries
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(lubridate)
+library(readxl)
+
+```
+
+
+```{r data}
+
+asset <- readxl::read_xlsx("data/Asset.xlsx")
+industry_fall23_work_orders <- readxl::read_xlsx("data/Industry_Fall23_620 Work Order (2).xlsx")
+task <- readxl::read_xlsx("data/Task.xlsx")
+technicians <- readxl::read_xlsx("data/Technicians.xlsx")
+work_order <- readxl::read_xlsx("data/Work Order.xlsx")
+
+```
+
+
+
+# EDA ----
+
+# Identify categories to predict by workflow
+
+## Workflow
+
+User selects:
+
+- New Work Order
+  - New WO number is generated
+  - Date is generated
+
+- Work Category
+  - Recommended `Work Type` is populated 
+  - Recommended `Priority` is populated
+  
+- Task
+  - Recommended `Technician` is populated
+  - Recommended `Asset` is populated
+
+- Location
+
+
+## Technician
+
+##
