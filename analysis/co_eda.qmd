@@ -48,13 +48,11 @@ work_order <- readxl::read_xlsx("data/Work Order.xlsx")
 
 ```
 
+# EDA
 
+## Identify categories to predict by workflow
 
-# EDA ----
-
-# Identify categories to predict by workflow
-
-## Workflow
+### Work Order
 
 User selects:
 
@@ -65,7 +63,8 @@ User selects:
 - Work Category
   - Recommended `Work Type` is populated 
   - Recommended `Priority` is populated
-  
+  - Recommended `Source Type` is populated
+
 - Task
   - Recommended `Technician` is populated
   - Recommended `Asset` is populated
@@ -73,6 +72,57 @@ User selects:
 - Location
 
 
-## Technician
+```{r libraries}
 
-##
+# libraries
+library(arules)
+library(arulesViz)
+
+```
+
+```{r association rules}
+
+# filter for client 49 - test run
+client49_data <- work_order %>% 
+  dplyr::filter(ClientXref == "Client 49")
+
+# convert column variables to factors
+cols_to_factor <- c("WorkCategory", "Problem", "WorkType", "Priority", "SourceType", "assetid")
+client49_data[cols_to_factor] <- lapply(client49_data[cols_to_factor], as.factor)
+
+# convert to transactions format
+transactions <- as(client49_data[cols_to_factor], "transactions")
+
+# run rules algorithm
+client49_rules <- arules::apriori(transactions, parameter = list(support = 0.05, confidence = 0.8))
+
+# sort rules by lift
+client49_sorted_rules <- arules::sort(rules, by = "lift", decreasing = TRUE)
+
+# view top rules
+arules::inspect(client49_sorted_rules[1:10])
+
+# basic plot
+plot(client49_sorted_rules, method = "graph", engine = "htmlwidget")
+
+# grouped matrix plot
+plot(client49_sorted_rules, method = "grouped")
+
+```
+
+```{r decision trees}
+
+library(rpart)
+library(rpart.plot)
+
+work_order_filtered <- work_order %>% 
+  dplyr::select(ClientXref, WorkCategory, Problem, WorkType, Priority, SourceType, assetid)
+
+cols_to_factor <- c("ClientXref", "WorkCategory", "Problem", "WorkType", "Priority", "SourceType", "assetid")
+work_order_filtered[cols_to_factor] <- lapply(work_order_filtered[cols_to_factor], as.factor)
+
+clientxref_tree <- rpart::rpart(ClientXref ~ ., data = work_order_filtered, method = "class")
+
+plot(clientxref_tree)
+
+```
