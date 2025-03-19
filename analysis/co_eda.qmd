@@ -122,7 +122,7 @@ cols_to_factor <- c("ClientXref", "WorkCategory", "Problem", "WorkType", "Priori
 work_order_filtered[cols_to_factor] <- lapply(work_order_filtered[cols_to_factor], as.factor)
 
 clientxref_tree <- rpart::rpart(ClientXref ~ ., data = work_order_filtered, method = "class", 
-                                control = rpart.control(cp = 0.02, maxdepth = 10, minsplit = 50))
+                                control = rpart.control(cp = 0.02, maxdepth = 2, minsplit = 50))
 
 plot(clientxref_tree)
 
