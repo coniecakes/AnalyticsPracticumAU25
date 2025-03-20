@@ -1,0 +1,133 @@
+---
+title: "AU Analytics Practicum"
+subtitle: "Autofill Tool"
+author: 
+  - name: "Conie O'Malley"
+    affiliation: "American University"
+    email: "co1984a@american.edu"
+date: "`r Sys.Date()`"
+format: 
+  html:
+    theme: cosmo 
+    highlight-style: github 
+    toc: true
+    toc-depth: 4
+    number-sections: true 
+    embed-resources: true
+    fig-width: 6 
+    fig-height: 4
+    df-print: paged
+    code-fold: true
+    #css: styles.css # Custom styling
+    #include-after-body: footer.html # Custom footer
+# bibliography: references.bib 
+# link-citations: true
+# version: "1.0"
+---
+
+
+```{r libraries}
+
+# libraries
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(lubridate)
+library(readxl)
+
+```
+
+
+```{r data}
+
+asset <- readxl::read_xlsx("data/Asset.xlsx")
+industry_fall23_work_orders <- readxl::read_xlsx("data/Industry_Fall23_620 Work Order (2).xlsx")
+task <- readxl::read_xlsx("data/Task.xlsx")
+technicians <- readxl::read_xlsx("data/Technicians.xlsx")
+work_order <- readxl::read_xlsx("data/Work Order.xlsx")
+
+```
+
+# EDA
+
+## Identify categories to predict by workflow
+
+### Work Order
+
+User selects:
+
+- New Work Order
+  - New WO number is generated
+  - Date is generated
+
+- Work Category
+  - Recommended `Work Type` is populated 
+  - Recommended `Priority` is populated
+  - Recommended `Source Type` is populated
+
+- Task
+  - Recommended `Technician` is populated
+  - Recommended `Asset` is populated
+
+- Location
+
+
+```{r libraries}
+
+# libraries
+library(arules)
+library(arulesViz)
+
+```
+
+```{r association rules}
+
+# filter for client 49 - test run
+client49_data <- work_order %>% 
+  dplyr::filter(ClientXref == "Client 49")
+
+# convert column variables to factors
+cols_to_factor <- c("WorkCategory", "Problem", "WorkType", "Priority", "SourceType", "assetid")
+client49_data[cols_to_factor] <- lapply(client49_data[cols_to_factor], as.factor)
+
+# convert to transactions format
+transactions <- as(client49_data[cols_to_factor], "transactions")
+
+# run rules algorithm
+client49_rules <- arules::apriori(transactions, parameter = list(support = 0.05, confidence = 0.8))
+
+# sort rules by lift
+client49_sorted_rules <- arules::sort(rules, by = "lift", decreasing = TRUE)
+
+# view top rules
+arules::inspect(client49_sorted_rules[1:10])
+
+# basic plot
+plot(client49_sorted_rules, method = "graph", engine = "htmlwidget")
+
+# grouped matrix plot
+plot(client49_sorted_rules, method = "grouped")
+
+```
+
+```{r decision trees}
+
+library(rpart)
+library(rpart.plot)
+
+work_order_filtered <- work_order %>% 
+  dplyr::select(ClientXref, WorkCategory, Problem, WorkType, Priority, SourceType)
+
+cols_to_factor <- c("ClientXref", "WorkCategory", "Problem", "WorkType", "Priority", "SourceType")
+work_order_filtered[cols_to_factor] <- lapply(work_order_filtered[cols_to_factor], as.factor)
+
+client49_data <- work_order_filtered %>% 
+  dplyr::filter(ClientXref == "Client 49")
+
+client49_tree <- rpart::rpart(WorkType ~ WorkCategory + Problem + Priority + SourceType, 
+                              data = client49_data, method = "class", 
+                              control = rpart.control(cp = 0.02, maxdepth = 5, minsplit = 50))
+
+plot(clientxref_tree)
+
+```
