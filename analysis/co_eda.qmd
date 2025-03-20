@@ -78,6 +78,12 @@ User selects:
 library(arules)
 library(arulesViz)
 
+work_order_filtered <- work_order %>% 
+  dplyr::select(ClientXref, WorkCategory, Problem, WorkType, Priority, SourceType, Cause)
+
+cols_to_factor <- c("ClientXref", "WorkCategory", "Problem", "WorkType", "Priority", "SourceType", "Cause")
+work_order_filtered[cols_to_factor] <- lapply(work_order_filtered[cols_to_factor], as.factor)
+
 ```
 
 ```{r association rules}
@@ -110,24 +116,108 @@ plot(client49_sorted_rules, method = "grouped")
 
 ```
 
+
+```{r new assoc rules}
+
+clients <- unique(work_order_filtered$ClientXref)
+
+client_rules <- list()
+
+# loop through clients to generate rules
+for (client in clients) {
+  client_data <- work_order_filtered %>% filter(ClientXref == client)
+  transactions <- as(as.data.frame(client_data[, c("WorkCategory", "Problem", "WorkType", "Priority", "SourceType",
+                                                  "Cause")]), "transactions")
+  rules <- arules::apriori(transactions, parameter = list(supp = 0.01, conf = 0.7))
+  client_rules[[client]] <- rules
+}
+
+long_rules <- arules::subset(rules, size(lhs) >= 2)  # Rules with at least 2 conditions on lhs
+arules::inspect(long_rules)
+
+plot(long_rules, method = "graph", engine = "htmlwidget")
+
+```
+
+```{r filter rules}
+
+# assign rules to df
+rules_df <- as(rules, "data.frame")
+
+# filter rules with count > 100
+filtered_rules_df <- rules_df %>% 
+  dplyr::filter(count >= 1000)
+
+# Find the indices of the filtered rules
+indices <- which(rules_df$count >= 1000)
+
+# Subset the rules object using the indices
+filtered_rules <- rules[indices]
+
+# Inspect filtered rules
+arules::inspect(filtered_rules)
+
+plot(filtered_rules, method = "graph", engine = "htmlwidget")
+
+interactive_plot <- plot(filtered_rules, method = "graph", engine = "htmlwidget")
+
+# Save the interactive plot as a standalone HTML file
+htmlwidgets::saveWidget(interactive_plot, "interactive_rules.html", selfcontained = TRUE)
+```
+
+```{r helper function test}
+
+selected_fields <- list("WorkCategory" = "Electrical", "Priority" = "High")
+
+get_autofill_suggestion(client_name = "Client 49",
+                        selected_fields = selected_fields,
+                        predict_field = "Problem",
+                        client_rules_list = client_rules)
+
+```
+
+
+### DNU
+
 ```{r decision trees}
 
-library(rpart)
-library(rpart.plot)
+#library(rpart)
+#library(rpart.plot)
+library(tree)
 
-work_order_filtered <- work_order %>% 
-  dplyr::select(ClientXref, WorkCategory, Problem, WorkType, Priority, SourceType)
 
-cols_to_factor <- c("ClientXref", "WorkCategory", "Problem", "WorkType", "Priority", "SourceType")
-work_order_filtered[cols_to_factor] <- lapply(work_order_filtered[cols_to_factor], as.factor)
 
 client49_data <- work_order_filtered %>% 
   dplyr::filter(ClientXref == "Client 49")
 
-client49_tree <- rpart::rpart(WorkType ~ WorkCategory + Problem + Priority + SourceType, 
-                              data = client49_data, method = "class", 
-                              control = rpart.control(cp = 0.02, maxdepth = 5, minsplit = 50))
+# individual client tree 
+client49_tree <- tree::tree(WorkType ~ Priority + SourceType,
+                            data = client49_data)
 
-plot(clientxref_tree)
+# plot the tree
+plot(client49_tree)
+text(client49_tree, pretty = 0)
+
+# full tree
+client_tree <- tree::tree(ClientXref ~ Cause + WorkType + Priority + SourceType,
+                            data = work_order_filtered)
+
+plot(client_tree)
+text(client_tree, pretty = 0)
+
+# partitioned tree
+clients <- unique(work_order_filtered$ClientXref)
+
+# empty list to store trees
+client_models <- list()
+
+# loop over each client
+for (client in clients) {
+  client_data <- work_order_filtered %>%
+    dplyr::filter(ClientXref == client)
+  client_tree <- tree::tree(WorkType ~ Cause + Priority + SourceType,
+                            data = client_data)
+  client_models[[client]] <- client_tree
+}
 
 ```
